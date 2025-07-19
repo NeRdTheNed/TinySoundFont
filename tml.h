@@ -163,9 +163,11 @@ TMLDEF tml_message* tml_load_tsf_stream(struct tsf_stream* stream);
 
 // end header
 // ---------------------------------------------------------------------------------------------------------
+
 #endif //TML_INCLUDE_TML_INL
 
 #ifdef TML_IMPLEMENTATION
+#undef TML_IMPLEMENTATION
 
 #if !defined(TML_MALLOC) || !defined(TML_FREE) || !defined(TML_REALLOC)
 #  include <stdlib.h>
@@ -185,20 +187,24 @@ TMLDEF tml_message* tml_load_tsf_stream(struct tsf_stream* stream);
 
 #define TML_NULL 0
 
+#ifdef DEBUG
+#ifdef TML_NO_STDIO
 ////crash on errors and warnings to find broken midi files while debugging
-//#define TML_ERROR(msg) *(int*)0 = 0xbad;
-//#define TML_WARN(msg)  *(int*)0 = 0xf00d;
-
+#	define TML_ERROR(msg, ...) *(int*)0 = 0xbad;
+#	define TML_WARN(msg, ...)  *(int*)0 = 0xf00d;
+#else
 ////print errors and warnings
-//#define TML_ERROR(msg) printf("ERROR: %s\n", msg);
-//#define TML_WARN(msg)  printf("WARNING: %s\n", msg);
+#	define TML_ERROR(msg, ...) fprintf(stderr, ("ERROR: " msg), ##__VA_ARGS__);
+#	define TML_WARN(msg, ...)  fprintf(stderr, ("WARNING: " msg), ##__VA_ARGS__);
+#endif //TML_NO_STDIO
+#endif //NDEBUG
 
 #ifndef TML_ERROR
-#define TML_ERROR(msg)
+#define TML_ERROR(msg, ...)
 #endif
 
 #ifndef TML_WARN
-#define TML_WARN(msg)
+#define TML_WARN(msg, ...)
 #endif
 
 #ifdef __cplusplus
@@ -250,7 +256,7 @@ struct tml_tempomsg
 
 struct tml_parser
 {
-	unsigned char *buf, *buf_end; 
+	unsigned char *buf, *buf_end;
 	int last_status, message_array_size, message_count;
 };
 
@@ -337,13 +343,39 @@ static int tml_parsemessage(tml_message** f, struct tml_parser* p)
 				((struct tml_tempomsg*)evt)->Tempo[2] = metadata[2];
 				break;
 
+			case TML_TIME_SIGNATURE:
+				if (buflen != 4) { TML_WARN("Invalid length for TimeSignature meta event"); return -1; }
+				{
+					unsigned char nn = metadata[0];
+					unsigned char dd = metadata[1];
+					unsigned char cc = metadata[2];
+					unsigned char bb = metadata[3];
+
+					TML_WARN("TimeSignature %d/%d Metronome:%d, 4th/32nd: %d", nn, 2<<(dd-1), cc, bb);
+				}
+				evt->type = 0;
+				break;
+
+			case TML_KEY_SIGNATURE:
+				if (buflen != 2) { TML_WARN("Invalid length for KeySignature meta event"); return -1; }
+				{
+					char sf = metadata[0];
+					unsigned char mi = metadata[1];
+
+					TML_WARN("KeySignature %s(%d) %s(%d)",
+						sf == 0 ? "C" : sf == -1 ? "Cb" : sf == 1 ? "C#" : "??", sf,
+						mi == 0 ? "Maj" : mi == 1 ? "min" : "??", mi);
+				}
+				evt->type = 0;
+				break;
 			default:
+				TML_WARN("Skip meta event: %02x len:%d", meta_type, buflen);
 				evt->type = 0;
 		}
 	}
 	else //channel message
 	{
-		int param; 
+		int param;
 		if ((param = tml_readbyte(p)) < 0) { TML_WARN("Unexpected end of file"); return -1; }
 		evt->key = (param & 0x7f);
 		evt->channel = (status & 0x0f);
@@ -399,6 +431,7 @@ TMLDEF tml_message* tml_load(struct tml_stream* stream)
 	if (num_tracks <= 0 && division <= 0) { TML_ERROR("Doesn't look like a MIDI file: invalid track or division values"); return messages; }
 
 	// Allocate temporary tracks array for parsing
+	TML_WARN("Number of tracks: %d\n", num_tracks)
 	tracks = (struct tml_track*)TML_MALLOC(sizeof(struct tml_track) * num_tracks);
 	tracksEnd = &tracks[num_tracks];
 	for (t = tracks; t != tracksEnd; t++) t->Idx = t->End = t->Ticks = 0;
@@ -408,13 +441,13 @@ TMLDEF tml_message* tml_load(struct tml_stream* stream)
 	{
 		unsigned char track_header[8];
 		int track_length;
-		if (stream->read(stream->data, track_header, 8) != 8) { TML_WARN("Unexpected end of file"); break; }
+		if (stream->read(stream->data, track_header, 8) != 8) { TML_WARN("Unexpected end of file\n"); break; }
 		if (track_header[0] != 'M' || track_header[1] != 'T' || track_header[2] != 'r' || track_header[3] != 'k')
-			{ TML_WARN("Invalid MTrk header"); break; }
+			{ TML_WARN("Invalid MTrk header\n"); break; }
 
 		// Get size of track data and read into buffer (allocate bigger buffer if needed)
 		track_length = track_header[7] | (track_header[6] << 8) | (track_header[5] << 16) | (track_header[4] << 24);
-		if (track_length < 0) { TML_WARN("Invalid MTrk header"); break; }
+		if (track_length < 0) { TML_WARN("Invalid MTrk header\n"); break; }
 		if (trackbufsize < track_length) { TML_FREE(trackbuf); trackbuf = (unsigned char*)TML_MALLOC(trackbufsize = track_length); }
 		if (stream->read(stream->data, trackbuf, track_length) != track_length) { TML_WARN("Unexpected end of file"); break; }
 
@@ -424,7 +457,7 @@ TMLDEF tml_message* tml_load(struct tml_stream* stream)
 			int type = tml_parsemessage(&messages, &p);
 			if (type == TML_EOT || type < 0) break; //file end or illegal data encountered
 		}
-		if (p.buf != p.buf_end) { TML_WARN( "Track length did not match data length"); }
+		if (p.buf != p.buf_end) { TML_WARN( "Track length did not match data length, actual:%lx expect:%lx\n", (uintptr_t)p.buf, (uintptr_t)p.buf_end); }
 		t->End = p.message_count;
 	}
 	TML_FREE(trackbuf);
@@ -440,6 +473,7 @@ TMLDEF tml_message* tml_load(struct tml_stream* stream)
 		// Loop through all messages over all tracks ordered by time
 		for (step_smallest = 0; step_smallest != 0x7fffffff; ticks += step_smallest)
 		{
+			TML_WARN("step_smallest %d %d\n", ticks, step_smallest);
 			step_smallest = 0x7fffffff;
 			msec = tempo_msec + (int)((ticks - tempo_ticks) * ticks2time);
 			for (t = tracks; t != tracksEnd; t++)
@@ -457,6 +491,7 @@ TMLDEF tml_message* tml_load(struct tml_stream* stream)
 					}
 					if (Msg->type)
 					{
+						TML_WARN("Msg time change: delta %d ticks -> absolute %d msec\n", Msg->time, msec);
 						Msg->time = msec;
 						if (PrevMessage) { PrevMessage->next = Msg; PrevMessage = Msg; }
 						else { Swap = *Msg; *Msg = *messages; *messages = Swap; PrevMessage = messages; }
