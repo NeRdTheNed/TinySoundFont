@@ -194,7 +194,7 @@ TSFDEF int tsf_active_voice_count(tsf* f);
 //   flag_mixing: if 0 clear the buffer first, otherwise mix into existing data
 TSFDEF void tsf_render_short(tsf* f, short* buffer, int samples, int flag_mixing CPP_DEFAULT0);
 TSFDEF void tsf_render_float(tsf* f, float* buffer, int samples, int flag_mixing CPP_DEFAULT0);
-TSFDEF void tsf_render_float_separate(tsf* f, float* bufferL, float* bufferR, int samples CPP_DEFAULT0);
+TSFDEF void tsf_render_float_separate(tsf* f, float* bufferL, float* bufferR, int samples, int flag_mixing CPP_DEFAULT0);
 
 // Higher level channel based functions, set up channel parameters
 //   channel: channel number
@@ -1750,11 +1750,14 @@ TSFDEF void tsf_render_float(tsf* f, float* buffer, int samples, int flag_mixing
 			tsf_voice_render(f, v, buffer, samples);
 }
 
-TSFDEF void tsf_render_float_separate(tsf* f, float* bufferL, float* bufferR, int samples)
+TSFDEF void tsf_render_float_separate(tsf* f, float* bufferL, float* bufferR, int samples, int flag_mixing)
 {
 	struct tsf_voice *v = f->voices, *vEnd = v + f->voiceNum;
-	TSF_MEMSET(bufferL, 0, sizeof(float) * samples);
-	TSF_MEMSET(bufferR, 0, sizeof(float) * samples);
+	if (!flag_mixing)
+	{
+		TSF_MEMSET(bufferL, 0, sizeof(float) * samples);
+		TSF_MEMSET(bufferR, 0, sizeof(float) * samples);
+	}
 	for (; v != vEnd; v++)
 		if (v->playingPreset != -1)
 			tsf_voice_render_separate(f, v, bufferL, bufferR, samples);
