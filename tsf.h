@@ -541,7 +541,7 @@ struct tsf_channel
 {
 	unsigned short presetIndex, bank, pitchWheel, midiPan, midiVolume, midiExpression, midiRPN, midiData : 14, sustain : 1;
 	unsigned short modWheel, midiQ, midiFc;
-	float pitchRange, tuning;
+	float panOffset, gainDB, pitchRange, tuning;
 };
 
 struct tsf_channels
@@ -1409,9 +1409,9 @@ static void tsf_voice_apply_modulator(tsf *f, struct tsf_voice* v, struct tsf_mo
 		case 9: // InitialFilterQ
 			v->initialFilterQ += computed * modulator->modAmount;
 			break;
-		case 17: // Pan
-			v->pan += computed * (modulator->modAmount * 0.001f /* GEN_FLOAT_LIMITPAN->vfactor */ * 0.5f /* GEN_FLOAT_LIMITPAN */);
-			break;
+		//case 17: // Pan
+		//	v->pan += computed * (modulator->modAmount * 0.001f /* GEN_FLOAT_LIMITPAN->vfactor */ * 0.5f /* GEN_FLOAT_LIMITPAN */);
+		//	break;
 		case 48: // InitialAttenuation
 			v->noteGainDB -= computed * (modulator->modAmount * 0.1f /* GEN_FLOAT_LIMITATTN->vfactor */);
 			break;
@@ -1654,7 +1654,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 	float lowpassFilterQDB, lowpassFc;
 	//static const float SB_EMU_DB = 0.4f;
 	v->noteGainDB = f->globalGainDB - (region->attenuation * 0.1f);
-	v->pan = region->pan;
+	//v->pan = region->pan;
 	v->initialFilterFc = region->initialFilterFc;
 	v->initialFilterQ = region->initialFilterQ;
 	v->vibLfoToPitch = region->vibLfoToPitch;
@@ -1669,10 +1669,12 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 	if (v->noteGainDB > 0.0f) v->noteGainDB = 0.0;
 	else if (v->noteGainDB < -144.0f) v->noteGainDB = -144.0f;
 
+/*
 	// Pan
 	if      (v->pan <= -0.5f) { v->panFactorLeft = 1.0f; v->panFactorRight = 0.0f; }
 	else if (v->pan >=  0.5f) { v->panFactorLeft = 0.0f; v->panFactorRight = 1.0f; }
 	else { v->panFactorLeft = TSF_SQRTF(0.5f - v->pan); v->panFactorRight = TSF_SQRTF(0.5f + v->pan); }
+*/
 
 	// Cache some values, to give them at least some chance of ending up in registers.
 	TSF_BOOL updateModEnv = (region->modEnvToPitch || region->modEnvToFilterFc);
@@ -2251,9 +2253,13 @@ TSFDEF void tsf_render_float_separate(tsf* f, float* bufferL, float* bufferR, in
 static void tsf_channel_setup_voice(tsf* f, struct tsf_voice* v)
 {
 	struct tsf_channel* c = &f->channels->channels[f->channels->activeChannel];
+	float newpan = v->region->pan + c->panOffset;
 	v->pan = v->region->pan;
 	v->playingChannel = f->channels->activeChannel;
 	tsf_voice_calcpitchratio(v, (c->pitchWheel == 8192 ? c->tuning : ((c->pitchWheel / 16383.0f * c->pitchRange * 2.0f) - c->pitchRange + c->tuning)), f->outSampleRate);
+	if      (newpan <= -0.5f) { v->panFactorLeft = 1.0f; v->panFactorRight = 0.0f; }
+	else if (newpan >=  0.5f) { v->panFactorLeft = 0.0f; v->panFactorRight = 1.0f; }
+	else { v->panFactorLeft = TSF_SQRTF(0.5f - newpan); v->panFactorRight = TSF_SQRTF(0.5f + newpan); }
 	v->lowpass.z1 = 0;
 	v->lowpass.z2 = 0;
 }
@@ -2287,6 +2293,8 @@ static struct tsf_channel* tsf_channel_init(tsf* f, int channel)
 		c->midiVolume = c->midiExpression = 16383;
 		c->midiRPN = 0xFFFF;
 		c->midiData = c->sustain = 0;
+		c->panOffset = 0.0f;
+		c->gainDB = 0.0f;
 		c->pitchRange = 2.0f;
 		c->tuning = 0.0f;
 		c->midiFc = 0x40;
@@ -2367,7 +2375,7 @@ TSFDEF int tsf_channel_set_pan(tsf* f, int channel, float pan)
 			else if (newpan >=  0.5f) { v->panFactorLeft = 0.0f; v->panFactorRight = 1.0f; }
 			else { v->panFactorLeft = TSF_SQRTF(0.5f - newpan); v->panFactorRight = TSF_SQRTF(0.5f + newpan); }
 		}
-	//c->panOffset = pan - 0.5f;
+	c->panOffset = pan - 0.5f;
 	return 1;
 }
 
@@ -2597,7 +2605,8 @@ TSFDEF int tsf_channel_get_preset_number(tsf* f, int channel)
 
 TSFDEF float tsf_channel_get_pan(tsf* f, int channel)
 {
-	return (f->channels && channel < f->channels->channelNum ? (f->channels->channels[channel].midiPan / 16383.0f) : 0.5f);
+	//return (f->channels && channel < f->channels->channelNum ? (f->channels->channels[channel].midiPan / 16383.0f) : 0.5f);
+	return (f->channels && channel < f->channels->channelNum ? f->channels->channels[channel].panOffset - 0.5f : 0.5f);
 }
 
 TSFDEF float tsf_channel_get_volume(tsf* f, int channel)
