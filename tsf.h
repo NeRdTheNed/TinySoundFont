@@ -1782,6 +1782,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 					float y0, y1, y2, y3;
 					
 					if (isLooping) {
+#ifdef TSF_CUBIC_INT_JANK
 						unsigned int p0 = pos;
 						unsigned int p1 = (p0 >= tmpLoopEnd ? tmpLoopStart : p0 + 1);
 						unsigned int p2 = (p1 >= tmpLoopEnd ? tmpLoopStart : p1 + 1);
@@ -1791,11 +1792,28 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 						y1 = input[p1];
 						y2 = input[p2];
 						y3 = input[p3];
+#else
+						unsigned int p1 = pos;
+						unsigned int p2 = (p1 >= tmpLoopEnd ? tmpLoopStart : p1 + 1);
+						unsigned int p3 = (p2 >= tmpLoopEnd ? tmpLoopStart : p2 + 1);
+						
+						y0 = (pos == v->loopStart ? input[tmpLoopEnd] : pos == 0 ? 0.0f : input[pos - 1]);
+						y1 = input[p1];
+						y2 = input[p2];
+						y3 = input[p3];
+#endif
 					} else {
+#ifdef TSF_CUBIC_INT_JANK
 						y0 = input[pos];
 						y1 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
 						y2 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
 						y3 = pos + 2 >= tmpSampleEnd ? 0.0f : input[pos + 3];
+#else
+						y0 = pos == 0 ? 0.0f : input[pos - 1];
+						y1 = input[pos];
+						y2 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
+						y3 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
+#endif
 					}
 					
 					float val = cubic_interpolate(y0, y1, y2, y3, alpha);
@@ -1829,6 +1847,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 					float y0, y1, y2, y3;
 					
 					if (isLooping) {
+#ifdef TSF_CUBIC_INT_JANK
 						unsigned int p0 = pos;
 						unsigned int p1 = (p0 >= tmpLoopEnd ? tmpLoopStart : p0 + 1);
 						unsigned int p2 = (p1 >= tmpLoopEnd ? tmpLoopStart : p1 + 1);
@@ -1838,11 +1857,28 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 						y1 = input[p1];
 						y2 = input[p2];
 						y3 = input[p3];
+#else
+						unsigned int p1 = pos;
+						unsigned int p2 = (p1 >= tmpLoopEnd ? tmpLoopStart : p1 + 1);
+						unsigned int p3 = (p2 >= tmpLoopEnd ? tmpLoopStart : p2 + 1);
+						
+						y0 = (pos == v->loopStart ? input[tmpLoopEnd] : pos == 0 ? 0.0f : input[pos - 1]);
+						y1 = input[p1];
+						y2 = input[p2];
+						y3 = input[p3];
+#endif
 					} else {
+#ifdef TSF_CUBIC_INT_JANK
 						y0 = input[pos];
 						y1 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
 						y2 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
 						y3 = pos + 2 >= tmpSampleEnd ? 0.0f : input[pos + 3];
+#else
+						y0 = pos == 0 ? 0.0f : input[pos - 1];
+						y1 = input[pos];
+						y2 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
+						y3 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
+#endif
 					}
 					
 					float val = cubic_interpolate(y0, y1, y2, y3, alpha);
@@ -1875,6 +1911,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 					float y0, y1, y2, y3;
 					
 					if (isLooping) {
+#ifdef TSF_CUBIC_INT_JANK
 						unsigned int p0 = pos;
 						unsigned int p1 = (p0 >= tmpLoopEnd ? tmpLoopStart : p0 + 1);
 						unsigned int p2 = (p1 >= tmpLoopEnd ? tmpLoopStart : p1 + 1);
@@ -1884,11 +1921,28 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 						y1 = input[p1];
 						y2 = input[p2];
 						y3 = input[p3];
+#else
+						unsigned int p1 = pos;
+						unsigned int p2 = (p1 >= tmpLoopEnd ? tmpLoopStart : p1 + 1);
+						unsigned int p3 = (p2 >= tmpLoopEnd ? tmpLoopStart : p2 + 1);
+						
+						y0 = (pos == v->loopStart ? input[tmpLoopEnd] : pos == 0 ? 0.0f : input[pos - 1]);
+						y1 = input[p1];
+						y2 = input[p2];
+						y3 = input[p3];
+#endif
 					} else {
+#ifdef TSF_CUBIC_INT_JANK
 						y0 = input[pos];
 						y1 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
 						y2 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
 						y3 = pos + 2 >= tmpSampleEnd ? 0.0f : input[pos + 3];
+#else
+						y0 = pos == 0 ? 0.0f : input[pos - 1];
+						y1 = input[pos];
+						y2 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
+						y3 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
+#endif
 					}
 					
 					float val = cubic_interpolate(y0, y1, y2, y3, alpha);
