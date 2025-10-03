@@ -68,7 +68,22 @@ int main(int argc, char *argv[])
 		//Get exclusive mutex lock, end the previous note and play a new note
 		printf("Play note %d with preset #%d '%s'\n", Notes[i % 7], i, tsf_get_presetname(g_TinySoundFont, i));
 		ma_mutex_lock(&g_Mutex);
+		g_TinySoundFont->interpolateMode = TSF_INTERP_NONE;
 		tsf_note_off(g_TinySoundFont, i - 1, Notes[(i - 1) % 7]);
+		tsf_note_on(g_TinySoundFont, i, Notes[i % 7], 1.0f);
+		ma_mutex_unlock(&g_Mutex);
+		ma_sleep(1000);
+
+		ma_mutex_lock(&g_Mutex);
+		g_TinySoundFont->interpolateMode = TSF_INTERP_LINEAR;
+		tsf_note_off(g_TinySoundFont, i, Notes[i % 7]);
+		tsf_note_on(g_TinySoundFont, i, Notes[i % 7], 1.0f);
+		ma_mutex_unlock(&g_Mutex);
+		ma_sleep(1000);
+
+		ma_mutex_lock(&g_Mutex);
+		g_TinySoundFont->interpolateMode = TSF_INTERP_CUBIC_HERMITE;
+		tsf_note_off(g_TinySoundFont, i, Notes[i % 7]);
 		tsf_note_on(g_TinySoundFont, i, Notes[i % 7], 1.0f);
 		ma_mutex_unlock(&g_Mutex);
 		ma_sleep(1000);
