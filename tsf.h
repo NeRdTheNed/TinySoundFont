@@ -1722,7 +1722,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 		if (tmpInitialFilterQ < 0) tmpInitialFilterQ = 0;
 		else if (tmpInitialFilterQ > 960) tmpInitialFilterQ = 960;
 	}
-	else tmpInitialFilterFc = 0, tmpModLfoToFilterFc = 0, tmpModEnvToFilterFc = 0, tmpLowpass.active = false;
+	else tmpInitialFilterFc = 0, tmpModLfoToFilterFc = 0, tmpModEnvToFilterFc = 0, tmpLowpass.active = TSF_FALSE;
 
 	if (dynamicPitchRatio) pitchRatio = 0, tmpModLfoToPitch = (float)region->modLfoToPitch, tmpVibLfoToPitch = (float)v->vibLfoToPitch, tmpModEnvToPitch = (float)region->modEnvToPitch;
 	else pitchRatio = tsf_timecents2Secsd(v->pitchInputTimecents) * v->pitchOutputFactor, tmpModLfoToPitch = 0, tmpVibLfoToPitch = 0, tmpModEnvToPitch = 0;
