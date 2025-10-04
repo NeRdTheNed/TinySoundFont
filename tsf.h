@@ -1699,30 +1699,30 @@ static inline float tsf_get_sample(tsf* f, struct tsf_voice* v, float* input, do
 			herm = TSF_FALSE;
 			goto getsampledatacubic;
 
-			getsampledatacubic:
+			getsampledatacubic: {
+				unsigned int pos = (unsigned int)tmpSourceSamplePosition;
+				float alpha = (float)(tmpSourceSamplePosition - pos);
 
-			unsigned int pos = (unsigned int)tmpSourceSamplePosition;
-			float alpha = (float)(tmpSourceSamplePosition - pos);
+				float y0, y1, y2, y3;
 
-			float y0, y1, y2, y3;
+				if (isLooping) {
+					unsigned int p1 = pos;
+					unsigned int p2 = (p1 >= tmpLoopEnd ? tmpLoopStart : p1 + 1);
+					unsigned int p3 = (p2 >= tmpLoopEnd ? tmpLoopStart : p2 + 1);
 
-			if (isLooping) {
-				unsigned int p1 = pos;
-				unsigned int p2 = (p1 >= tmpLoopEnd ? tmpLoopStart : p1 + 1);
-				unsigned int p3 = (p2 >= tmpLoopEnd ? tmpLoopStart : p2 + 1);
+					y0 = (pos == v->loopStart ? input[tmpLoopEnd] : pos == 0 ? 0.0f : input[pos - 1]);
+					y1 = input[p1];
+					y2 = input[p2];
+					y3 = input[p3];
+				} else {
+					y0 = pos == 0 ? 0.0f : input[pos - 1];
+					y1 = input[pos];
+					y2 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
+					y3 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
+				}
 
-				y0 = (pos == v->loopStart ? input[tmpLoopEnd] : pos == 0 ? 0.0f : input[pos - 1]);
-				y1 = input[p1];
-				y2 = input[p2];
-				y3 = input[p3];
-			} else {
-				y0 = pos == 0 ? 0.0f : input[pos - 1];
-				y1 = input[pos];
-				y2 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
-				y3 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
+				return herm ? tsf_cubic_interpolate_hermite(y0, y1, y2, y3, alpha) : tsf_cubic_interpolate_lagrange(y0, y1, y2, y3, alpha);
 			}
-
-			return herm ? tsf_cubic_interpolate_hermite(y0, y1, y2, y3, alpha) : tsf_cubic_interpolate_lagrange(y0, y1, y2, y3, alpha);
 		}
 		case TSF_INTERP_NONE: {
 			return input[(unsigned int)tmpSourceSamplePosition];
@@ -1810,6 +1810,8 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 	if (dynamicGain) tmpModLfoToVolume = (float)region->modLfoToVolume * 0.1f;
 	else noteGain = tsf_decibelsToGain(v->noteGainDB), tmpModLfoToVolume = 0;
 
+	enum TSFOutputMode outputMode = f->outputmode;
+
 	while (numSamples)
 	{
 		float gainMono, gainLeft, gainRight;
@@ -1838,7 +1840,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 		if (updateModLFO) tsf_voice_lfo_process(&v->modlfo, blockSamples);
 		if (updateVibLFO) tsf_voice_lfo_process(&v->viblfo, blockSamples);
 
-		switch (f->outputmode)
+		switch (outputMode)
 		{
 			case TSF_STEREO_INTERLEAVED:
 				gainLeft = gainMono * v->panFactorLeft, gainRight = gainMono * v->panFactorRight;
