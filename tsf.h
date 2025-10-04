@@ -136,7 +136,9 @@ enum TSFInterpolateMode
 	// No interpolation, unlikely to sound good although it is the fastest
 	TSF_INTERP_NONE,
 	// 4 point hermite interpolation
-	TSF_INTERP_CUBIC_HERMITE
+	TSF_INTERP_CUBIC_HERMITE,
+	// 4 point Lagrange interpolation
+	TSF_INTERP_CUBIC_LAGRANGE
 };
 
 // Thread safety:
@@ -1661,7 +1663,6 @@ static void tsf_voice_calcpitchratio(struct tsf_voice* v, float pitchShift, floa
 static inline float tsf_cubic_interpolate_hermite(float y0, float y1, float y2, float y3, float x)
 {
     // From Polynomial Interpolators for High-Quality Resampling of Oversampled Audio by Olli Niemitalo
-    // TODO consider alternative algorithms
     // 4-point, 3rd-order Hermite (x-form)
     float c0 = y1;
     float c1 = 1/2.0*(y2-y0);
@@ -1670,11 +1671,36 @@ static inline float tsf_cubic_interpolate_hermite(float y0, float y1, float y2, 
     return ((c3*x+c2)*x+c1)*x+c0;
 }
 
+static inline float tsf_cubic_interpolate_lagrange(float y0, float y1, float y2, float y3, float x)
+{
+    // From Polynomial Interpolators for High-Quality Resampling of Oversampled Audio by Olli Niemitalo
+    // 4-point, 3rd-order Lagrange (x-form)
+    float c0 = y1;
+    float c1 = y2 - 1/3.0*y0 - 1/2.0*y1 - 1/6.0*y3;
+    float c2 = 1/2.0*(y0+y2) - y1;
+    float c3 = 1/6.0*(y3-y0) + 1/2.0*(y1-y2);
+    return ((c3*x+c2)*x+c1)*x+c0;
+}
+
+// TODO Rewrite this
 static inline float tsf_get_sample(tsf* f, struct tsf_voice* v, float* input, double tmpSourceSamplePosition, unsigned int tmpLoopStart, unsigned int tmpLoopEnd, unsigned int tmpSampleEnd, TSF_BOOL isLooping)
 {
 	switch (f->interpolateMode)
 	{
-		case TSF_INTERP_CUBIC_HERMITE: {
+		{
+			// TODO This is stupid and probably slow
+			TSF_BOOL herm;
+
+			case TSF_INTERP_CUBIC_HERMITE:
+			herm = TSF_TRUE;
+			goto getsampledatacubic;
+
+			case TSF_INTERP_CUBIC_LAGRANGE:
+			herm = TSF_FALSE;
+			goto getsampledatacubic;
+
+			getsampledatacubic:
+
 			unsigned int pos = (unsigned int)tmpSourceSamplePosition;
 			float alpha = (float)(tmpSourceSamplePosition - pos);
 
@@ -1696,7 +1722,7 @@ static inline float tsf_get_sample(tsf* f, struct tsf_voice* v, float* input, do
 				y3 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
 			}
 
-			return tsf_cubic_interpolate_hermite(y0, y1, y2, y3, alpha);
+			return herm ? tsf_cubic_interpolate_hermite(y0, y1, y2, y3, alpha) : tsf_cubic_interpolate_lagrange(y0, y1, y2, y3, alpha);
 		}
 		case TSF_INTERP_NONE: {
 			return input[(unsigned int)tmpSourceSamplePosition];
