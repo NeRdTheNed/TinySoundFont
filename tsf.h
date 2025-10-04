@@ -135,7 +135,9 @@ enum TSFInterpolateMode
 	TSF_INTERP_LINEAR,
 	// No interpolation, unlikely to sound good although it is the fastest
 	TSF_INTERP_NONE,
-	// 4 point hermite interpolation
+	// 4 point Watte interpolation
+	TSF_INTERP_WATTE_4P,
+	// 4 point Hermite interpolation
 	TSF_INTERP_HERMITE_4P,
 	// 4 point Lagrange interpolation
 	TSF_INTERP_LAGRANGE_4P,
@@ -1696,6 +1698,17 @@ static inline float tsf_interpolate_lagrange_4p(float y0, float y1, float y2, fl
     return ((c3*x+c2)*x+c1)*x+c0;
 }
 
+static inline float tsf_interpolate_watte_4p(float y0, float y1, float y2, float y3, float x)
+{
+    // From Polynomial Interpolators for High-Quality Resampling of Oversampled Audio by Olli Niemitalo
+    // 4-point, 2nd-order Watte tri-linear (x-form)
+    float ym1py2 = y0+y3;
+    float c0 = y1;
+    float c1 = 3/2.0*y2 - 1/2.0*(y1+ym1py2);
+    float c2 = 1/2.0*(ym1py2-y1-y2);
+    return (c2*x+c1)*x+c0;
+}
+
 // TODO Rewrite this
 static inline float tsf_get_sample_4p(float* input, double tmpSourceSamplePosition, unsigned int tmpLoopStart, unsigned int tmpLoopEnd, unsigned int tmpSampleEnd, TSF_BOOL isLooping, enum TSFInterpolateMode interpMode)
 {
@@ -1719,13 +1732,15 @@ static inline float tsf_get_sample_4p(float* input, double tmpSourceSamplePositi
 		y2 = pos >= tmpSampleEnd ? 0.0f : input[pos + 1];
 		y3 = pos + 1 >= tmpSampleEnd ? 0.0f : input[pos + 2];
 	}
-	
+
 	switch (interpMode)
 	{
 	  case TSF_INTERP_HERMITE_4P:
 	    return tsf_interpolate_hermite_4p(y0, y1, y2, y3, alpha);
 	  case TSF_INTERP_BSPLINE_4P:
 	    return tsf_interpolate_bspline_4p(y0, y1, y2, y3, alpha);
+	  case TSF_INTERP_WATTE_4P:
+	    return tsf_interpolate_watte_4p(y0, y1, y2, y3, alpha);
 	  default:
 	    return tsf_interpolate_lagrange_4p(y0, y1, y2, y3, alpha);
 	}
@@ -1847,6 +1862,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 
 					switch (interpMode)
 					{
+						case TSF_INTERP_WATTE_4P:
 						case TSF_INTERP_HERMITE_4P:
 						case TSF_INTERP_LAGRANGE_4P:
 						case TSF_INTERP_BSPLINE_4P: {
@@ -1889,6 +1905,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 
 					switch (interpMode)
 					{
+						case TSF_INTERP_WATTE_4P:
 						case TSF_INTERP_HERMITE_4P:
 						case TSF_INTERP_LAGRANGE_4P:
 						case TSF_INTERP_BSPLINE_4P: {
@@ -1930,6 +1947,7 @@ TSFDEF void tsf_voice_render_separate(tsf* f, struct tsf_voice* v, float* output
 
 					switch (interpMode)
 					{
+						case TSF_INTERP_WATTE_4P:
 						case TSF_INTERP_HERMITE_4P:
 						case TSF_INTERP_LAGRANGE_4P:
 						case TSF_INTERP_BSPLINE_4P: {
