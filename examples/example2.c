@@ -108,6 +108,27 @@ int main(int argc, char *argv[])
 		tsf_note_on(g_TinySoundFont, i, Notes[i % 7], 1.0f);
 		ma_mutex_unlock(&g_Mutex);
 		ma_sleep(1000);
+
+		ma_mutex_lock(&g_Mutex);
+		g_TinySoundFont->interpolateMode = TSF_INTERP_HERMITE_6P;
+		tsf_note_off(g_TinySoundFont, i, Notes[i % 7]);
+		tsf_note_on(g_TinySoundFont, i, Notes[i % 7], 1.0f);
+		ma_mutex_unlock(&g_Mutex);
+		ma_sleep(1000);
+
+		ma_mutex_lock(&g_Mutex);
+		g_TinySoundFont->interpolateMode = TSF_INTERP_LAGRANGE_6P;
+		tsf_note_off(g_TinySoundFont, i, Notes[i % 7]);
+		tsf_note_on(g_TinySoundFont, i, Notes[i % 7], 1.0f);
+		ma_mutex_unlock(&g_Mutex);
+		ma_sleep(1000);
+
+		ma_mutex_lock(&g_Mutex);
+		g_TinySoundFont->interpolateMode = TSF_INTERP_BSPLINE_6P;
+		tsf_note_off(g_TinySoundFont, i, Notes[i % 7]);
+		tsf_note_on(g_TinySoundFont, i, Notes[i % 7], 1.0f);
+		ma_mutex_unlock(&g_Mutex);
+		ma_sleep(1000);
 	}
 
 	ma_device_uninit(&device);
