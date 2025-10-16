@@ -89,6 +89,8 @@ int main(int argc, char *argv[])
 	//Set up the global MidiMessage pointer to the first MIDI message
 	g_MidiMessage = TinyMidiLoader;
 
+	tsf_init_lut();
+
 	// Load the SoundFont from a file
 	g_TinySoundFont = tsf_load_filename(
 		(argc >= 3 ? argv[2] : "florestan-subset.sf2")

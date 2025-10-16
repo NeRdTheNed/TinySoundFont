@@ -39,6 +39,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	tsf_init_lut();
+
 	// Load the SoundFont from a file
 	g_TinySoundFont = tsf_load_filename("florestan-subset.sf2");
 	if (!g_TinySoundFont)

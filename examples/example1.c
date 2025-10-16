@@ -51,6 +51,8 @@ int main(int argc, char *argv[])
 		return 1;
 	}
 
+	tsf_init_lut();
+
 	// Load the SoundFont from the memory block
 	g_TinySoundFont = tsf_load_memory(MinimalSoundFont, sizeof(MinimalSoundFont));
 	if (!g_TinySoundFont)
